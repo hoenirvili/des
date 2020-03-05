@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include "key.h"
+#include "des.h"
 
 const char *optstring="ghk:";
 
@@ -24,51 +25,6 @@ struct args {
 };
 
 const char *key_name = "des.key";
-
-static uint32_t f(uint32_t r0, uint64_t subkey) {
-    //TODO(hoenir): implement f
-    return 0;
-}
-
-static uint32_t subkey(key key) {
-    //TODO(hoenir): implement subkey extraction
-    return 0;
-}
-
-static int encrypt_block(key key, uint64_t chunk)
-{
-    uint32_t l0 = chunk >> 32; // most significant 32 bits
-    uint32_t r0 = chunk & 0x00000000ffffffff; // least significant 32 bits
-    uint32_t fres = f(r0, subkey(key)) ^ l0;
-    uint64_t res = 0;
-    memcpy(&res, &r0, sizeof(r0));
-    memcpy((char*)&res + sizeof(r0), &fres, sizeof(fres));
-    printf("[*] encrypt 64 bytes, chunk %#llx l0:%#x r0:%#x f: %#x res: %#llx\n", chunk, l0, r0, fres, res);
-    return res;
-}
-
-static int encrypt_des(key key, char *input)
-{
-    size_t n = strlen(input);
-    size_t blocks = n / sizeof(uint64_t);
-    size_t remaning = n % sizeof(uint64_t);
-
-    printf("[*] Input size in bytes: %lu, blocks: %lu remaning: %lu\n", n, blocks, remaning);
-
-    size_t i = 0;
-    uint64_t chunk = 0;
-    for (; i < blocks; i++) {
-        memcpy(&chunk, &input[i], sizeof(chunk));
-        encrypt_block(key, chunk);
-    }
-
-    if (remaning > 0) {
-        chunk = 0;
-        memcpy(&chunk, &input[i], remaning);
-    }
-
-    return 0;
-}
 
 int run(struct args args)
 {
@@ -94,7 +50,7 @@ int run(struct args args)
     printf("[*] Encrypt, input: %s\n", args.input);
     printf("[*] Using the key hex: %s\n", hex_key);
 
-    return encrypt_des(args.key, args.input);
+    return des_encrypt(args.key, args.input);
 }
 
 const char *help_menu =

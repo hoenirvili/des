@@ -2,4 +2,4 @@
 
 #include "key.h"
 
-int des_encrypt(key key, const char *input);
+extern int des_encrypt(key key, const char *input);

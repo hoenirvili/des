@@ -20,6 +20,4 @@ extern void key_to_hex(key key, char *out);
 
 extern int key_generate(key *key);
 
-typedef uint8_t table[KEY_ENC_USED_SIZE];
-
-extern key subkey(key orig_key, table table);
+extern key subkey(key orig_key);

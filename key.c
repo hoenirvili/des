@@ -50,7 +50,7 @@ int key_to_file(key key, const char *file)
     return code;
 }
 
-const table pc1 = {
+const uint8_t pc1[KEY_ENC_USED_SIZE] = {
     57, 49, 41, 33, 25, 17, 9,
     1 , 58, 50, 42, 34, 26, 18,
     10, 2,  59, 51, 43, 35, 27,
@@ -61,14 +61,16 @@ const table pc1 = {
     21, 13, 5,  28, 20, 12, 4
 };
 
-
-#define ARRAY_SIZE(arr) sizeof(arr) / sizeof(arr[0])
-
-key subkey(key orig_key, table pc)
+static key _subkey(key orig_key, const uint8_t *pc)
 {
-    size_t n = ARRAY_SIZE(pc1);
-    key sub;
+    size_t n = KEY_ENC_USED_SIZE;
+    key sub = 0;
     for(size_t i = 0; i < n; i++)
-        sub = sub | ((orig_key >> pc[i]) & (1 << i & 0xffffffff));
+        sub |= (orig_key >> pc[i]) & ((1 << i) & 0xffffffff);
     return sub;
+}
+
+key subkey(key orig_key)
+{
+    return _subkey(orig_key, pc1);
 }

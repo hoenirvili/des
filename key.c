@@ -1,7 +1,7 @@
-#include "key.h"
-
 #include <stdio.h>
 #include <stdlib.h>
+#include "key.h"
+#include "dump.h"
 
 int key_from_file(key *key, const char *file)
 {
@@ -19,7 +19,7 @@ int key_from_file(key *key, const char *file)
 
 void key_to_hex(key key, char *out)
 {
-    sprintf(out, "%#llx", key);
+    dump_buffer(&key, sizeof(key), out);
 }
 
 int key_generate(key *key)
@@ -50,7 +50,7 @@ int key_to_file(key key, const char *file)
     return code;
 }
 
-const uint8_t pc1[KEY_ENC_USED_SIZE] = {
+const uint8_t pc1[KEY_ENC_BITS_USED_SIZE] = {
     57, 49, 41, 33, 25, 17, 9,
     1 , 58, 50, 42, 34, 26, 18,
     10, 2,  59, 51, 43, 35, 27,
@@ -61,12 +61,17 @@ const uint8_t pc1[KEY_ENC_USED_SIZE] = {
     21, 13, 5,  28, 20, 12, 4
 };
 
+const size_t KEY_N_BITS = KEY_SIZE * 8;
+
+// _subkey generates a subkey based of a pc provided
+// this generates the first round of permutation
+// TODO(hoenir):
 static key _subkey(key orig_key, const uint8_t *pc)
 {
-    size_t n = KEY_ENC_USED_SIZE;
     key sub = 0;
-    for(size_t i = 0; i < n; i++)
-        sub |= (orig_key >> pc[i]) & ((1 << i) & 0xffffffff);
+    for(size_t i = 0; i < KEY_ENC_BITS_USED_SIZE; i++) {
+        sub |= (orig_key >> pc[i] & 1ull ) << i;
+    }
     return sub;
 }
 

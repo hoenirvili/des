@@ -4,7 +4,7 @@
 
 typedef uint64_t key;
 
-#define KEY_ENC_USED_SIZE 56
+#define KEY_ENC_BITS_USED_SIZE 56
 
 #define KEY_SIZE sizeof(uint64_t)
 

@@ -69,9 +69,8 @@ const size_t KEY_N_BITS = KEY_SIZE * 8;
 static key _subkey(key orig_key, const uint8_t *pc)
 {
     key sub = 0;
-    for(size_t i = 0; i < KEY_ENC_BITS_USED_SIZE; i++) {
-        sub |= (orig_key >> pc[i] & 1ull ) << i;
-    }
+    for(size_t i = 0; i < KEY_ENC_BITS_USED_SIZE; i++)
+        sub |= (orig_key >> pc[i] & 1ull) << i;
     return sub;
 }
 

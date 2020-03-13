@@ -7,7 +7,6 @@
 
 #define CIPHER_BLOCK_SIZE KEY_SIZE
 
-
 // The 64 bits of the input block to be enciphered are
 // first subjected to the following permutation,
 // called the initial permutation IP.
@@ -53,7 +52,6 @@ static char *input_with_padding(const char *input)
     return strdup(input);
 }
 
-
 int des_encrypt(key inkey, const char *input)
 {
     char *padin = input_with_padding(input);
@@ -61,9 +59,7 @@ int des_encrypt(key inkey, const char *input)
         return EXIT_FAILURE;
 
     const key skey = subkey(inkey);
-
-    //dump_stdout(&skey, sizeof(skey));
-
+    dump_stdout(&skey, sizeof(skey));
     free(padin);
     return EXIT_SUCCESS;
 }

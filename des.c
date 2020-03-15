@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h> // TODO: remove
-#include <arpa/inet.h>
+#include <assert.h>
 #include "dump.h"
 #include "des.h"
 
@@ -59,20 +58,24 @@ void load_split(struct pair *pair, key subkey)
 {
     // load the first 32 bits of the key
     memcpy(&pair->c, &subkey, sizeof(subkey));
+
     // save the last 4 bits because it belongs to the next half
-    uint8_t save = pair->c & 0x0000000F;
+    uint8_t save = pair->c & 0xF0000000;
     save = save << 4;
     // we only need the first 28 bits
-    pair->c = pair->c & 0xFFFFFFF0;
+    pair->c = pair->c & 0x0FFFFFFF;
 
     // we now, need to take the last 4 bits from the first 32 bits and
     // make them be the first 4 bits. We should take into consideration that
     // the value of the key has 4 bits that is 0000 (that's from the permutation)
     // we can load the 4 bytes into d and then shift it by 4 right and append the last
     // 4 bits from
-    pair->d = subkey & 0x00000000FFFFFFFF; // extract the last 32 bits
-    pair->d = pair->d >> 4; // we now that we have 0000 as the last 4 bits
-    pair->d = pair->d | save; // add the first 4 bits
+    union half {
+        key key;
+        uint32_t words;
+    } { .key = subkey };
+
+
 }
 
 int des_encrypt(key inkey, const char *input)
@@ -88,6 +91,11 @@ int des_encrypt(key inkey, const char *input)
     dump_stdout(&skey, sizeof(skey));
     dump_stdout(&pair.c, sizeof(pair.c));
     dump_stdout(&pair.d, sizeof(pair.d));
+
+
+    assert(pair.c == 0x556678F);
+
+    assert(pair.d == 0xF0CCAAF); //////
 
     free(padin);
     return EXIT_SUCCESS;

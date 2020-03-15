@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include "key.h"
 #include "dump.h"
 
@@ -10,7 +12,7 @@ int key_from_file(key *key, const char *file)
         return EXIT_FAILURE;
 
     int code = EXIT_SUCCESS;
-    if (fread(key, KEY_SIZE, 1, fp) < 0)
+    if (fread(key, sizeof(*key), 1, fp) < 0)
         code = EXIT_FAILURE;
 
     fclose(fp);
@@ -29,7 +31,7 @@ int key_generate(key *key)
         return EXIT_FAILURE;
 
     int code = EXIT_SUCCESS;
-    if (fread(key, KEY_SIZE, 1, fp) < 0)
+    if (fread(key, sizeof(*key), 1, fp) < 0)
         code = EXIT_FAILURE;
 
     fclose(fp);
@@ -43,7 +45,7 @@ int key_to_file(key key, const char *file)
         return EXIT_FAILURE;
 
     int code = EXIT_SUCCESS;
-    if (fwrite(&key, KEY_SIZE, 1, fp) < 0)
+    if (fwrite(&key, sizeof(key), 1, fp) < 0)
         code = EXIT_FAILURE;
 
     fclose(fp);
@@ -65,12 +67,11 @@ const size_t KEY_N_BITS = KEY_SIZE * 8;
 
 // _subkey generates a subkey based of a pc provided
 // this generates the first round of permutation
-// TODO(hoenir):
 static key _subkey(key orig_key, const uint8_t *pc)
 {
     key sub = 0;
-    for(size_t i = 0; i < KEY_ENC_BITS_USED_SIZE; i++)
-        sub |= (orig_key >> pc[i] & 1ull) << i;
+    for (size_t i = 0; i < KEY_ENC_BITS_USED_SIZE; i++)
+        sub |= (orig_key >> (KEY_N_BITS - pc[i]) & 0x1) << (KEY_ENC_BITS_USED_SIZE - 1 - i);
     return sub;
 }
 

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h> // TODO: remove
-
+#include <arpa/inet.h>
 #include "dump.h"
 #include "des.h"
 
@@ -52,6 +52,29 @@ static char *input_with_padding(const char *input)
     return strdup(input);
 }
 
+struct pair { uint32_t c; uint32_t d; };
+
+// TODO(honier): finish this
+void load_split(struct pair *pair, key subkey)
+{
+    // load the first 32 bits of the key
+    memcpy(&pair->c, &subkey, sizeof(subkey));
+    // save the last 4 bits because it belongs to the next half
+    uint8_t save = pair->c & 0x0000000F;
+    save = save << 4;
+    // we only need the first 28 bits
+    pair->c = pair->c & 0xFFFFFFF0;
+
+    // we now, need to take the last 4 bits from the first 32 bits and
+    // make them be the first 4 bits. We should take into consideration that
+    // the value of the key has 4 bits that is 0000 (that's from the permutation)
+    // we can load the 4 bytes into d and then shift it by 4 right and append the last
+    // 4 bits from
+    pair->d = subkey & 0x00000000FFFFFFFF; // extract the last 32 bits
+    pair->d = pair->d >> 4; // we now that we have 0000 as the last 4 bits
+    pair->d = pair->d | save; // add the first 4 bits
+}
+
 int des_encrypt(key inkey, const char *input)
 {
     char *padin = input_with_padding(input);
@@ -59,7 +82,13 @@ int des_encrypt(key inkey, const char *input)
         return EXIT_FAILURE;
 
     const key skey = subkey(inkey);
+    struct pair pair;
+    load_split(&pair, skey);
+
     dump_stdout(&skey, sizeof(skey));
+    dump_stdout(&pair.c, sizeof(pair.c));
+    dump_stdout(&pair.d, sizeof(pair.d));
+
     free(padin);
     return EXIT_SUCCESS;
 }

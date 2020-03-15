@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     }
 
     int ch = 0;
-    struct args args = { 0 };
+    struct args args = {0};
     while (ch != -1) {
         ch = getopt_long(argc, argv, optstring, longopts, NULL);
         switch (ch) {

@@ -1,8 +1,6 @@
 #pragma once
 
-#include <sys/types.h>
 #include <stdio.h>
-
 
 /**
  * dump_file

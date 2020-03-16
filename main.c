@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-#include <assert.h>
 
 #include "key.h"
 #include "des.h"
@@ -101,6 +98,12 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-    return run(args);
+    int err = run(args);
+    if (err != 0) {
+        fprintf(stderr, "We have an error");
+        return EXIT_FAILURE;
+    }
+
+    return err;
 }
 

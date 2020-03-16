@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
 #include "dump.h"
 #include "des.h"
 
@@ -39,7 +40,7 @@ static char *input_with_padding(const char *input)
     const size_t n = strlen(input);
     const size_t r = n % CIPHER_BLOCK_SIZE;
     if (r != 0) {
-        char *padded = malloc(n+1+sizeof(uint64_t)-r);
+        char *padded = malloc(n + 1 + sizeof(uint64_t)-r);
         if (!padded)
             return NULL;
 
@@ -52,31 +53,69 @@ static char *input_with_padding(const char *input)
 }
 
 struct pair {
-    uint32_t c;
     uint32_t d;
+    uint32_t c;
 };
 
-// TODO(honier): finish this
+#define PAIR_FIRST(pairs) pairs[0]
+
+#define PAIR_FIRST_C(pairs) pairs[0].c
+
+#define PAIR_FIRST_D(pairs) pairs[0].d
+
+
 void load_split(struct pair *pair, key subkey)
 {
-    // load the first 32 bits (this means we load the
-    // last 32 bits from the key, because we made the key BE)
-    memcpy(&pair->d, &subkey, sizeof(subkey));
-    // save the last 4 bits because it belongs to the next half
+    memcpy(pair, &subkey, sizeof(*pair));
     uint8_t save = (pair->d & (0xF << 28)) >> 28;
-    // we only need the first 28 bits
     pair->d &= 0x0FFFFFFF;
-
     // we now, need to take the last 4 bits from the first 32 bits and
     // make them be the first 4 bits. We should take into consideration that
     // the value of the key has 4 bits that is 0000 (that's from the permutation)
     // we can load the 4 bytes into d and then shift it by 4 right and append the last
     // 4 bits from
-    uint32_t half = subkey >> 32;
-    memcpy(&pair->c, &half, sizeof(half));
     pair->c <<= 4;
     pair->c |= save;
 }
+
+static uint32_t shift_rotate_left(uint32_t n)
+{
+    // first we move the bit that we want to rotate to the left
+    // we take care the always cut the last 4 bits
+    // then we attach that bit we just trimmed from the left to the right
+    return ((n << 1) & (0x0FFFFFFF)) | ((n & ( 1 << 27)) >> 27);
+}
+
+#define ROUNDS 16
+
+const uint8_t left_shifts[ROUNDS] = {1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1};
+
+static void shift_rotate_left_pairs(uint32_t c0, uint32_t d0, struct pair* pairs)
+{
+    for (size_t i = 0; i < ROUNDS; i++) {
+        if (i == 0) {
+            uint32_t c1 = c0;
+            uint32_t d1 = d0;
+            for (size_t j = 0; j < left_shifts[i]; j++) {
+                c1 = shift_rotate_left(c1);
+                d1 = shift_rotate_left(d1);
+            }
+            pairs[i].c = c1;
+            pairs[i].d = d1;
+            continue;
+        }
+        uint32_t c = pairs[i-1].c;
+        uint32_t d = pairs[i-1].d;
+        for (size_t j = 0; j <  left_shifts[i]; j++) {
+            c = shift_rotate_left(c);
+            d = shift_rotate_left(d);
+        }
+        pairs[i].c = c;
+        pairs[i].d = d;
+    }
+}
+
+static void dump_pairs(struct pair* pairs);
 
 int des_encrypt(key inkey, const char *input)
 {
@@ -85,15 +124,51 @@ int des_encrypt(key inkey, const char *input)
         return EXIT_FAILURE;
 
     const key skey = subkey(inkey);
-    struct pair pair = {0};
-    load_split(&pair, skey);
+    struct pair pairs[ROUNDS+1] = {0};
+    load_split(&PAIR_FIRST(pairs), skey);
+    dump_stdout(&skey, sizeof(skey));
 
-    /* dump_stdout(&skey, sizeof(skey)); */
-    /* dump_stdout(&pair.c, sizeof(pair.c)); */
-    /* dump_stdout(&pair.d, sizeof(pair.d)); */
-    /* assert(pair.d == 0x556678F); */
-    /* assert(pair.c == 0xF0CCAAF); */
+    assert(skey == 0xF0CCAAF556678F);
+
+    dump_stdout(&PAIR_FIRST_C(pairs), sizeof(PAIR_FIRST_C(pairs)));
+    dump_stdout(&PAIR_FIRST_D(pairs), sizeof(PAIR_FIRST_D(pairs)));
+
+    assert(pairs[0].d == 0x556678F);
+    assert(pairs[0].c == 0xF0CCAAF);
+
+    shift_rotate_left_pairs(PAIR_FIRST_C(pairs), PAIR_FIRST_D(pairs), &pairs[1]);
+
+    dump_pairs(pairs);
+
+    assert(pairs[1].c == 0xE19955F);
+    assert(pairs[1].d == 0xAACCF1E);
+
+    assert(pairs[2].c == 0xC332ABF);
+    assert(pairs[2].d == 0x5599E3D);
+
+    assert(pairs[14].c == 0xFE19955);
+    assert(pairs[14].d == 0xEAACCF1);
+
+    assert(pairs[15].c == 0xF866557);
+    assert(pairs[15].d == 0xAAB33C7);
+
+    assert(pairs[16].c == 0xF0CCAAF);
+    assert(pairs[16].d == 0x556678F);
 
     free(padin);
     return EXIT_SUCCESS;
+}
+
+static void dump_pairs(struct pair* pairs)
+{
+    // 0x + 4 byte value hex + '\0'
+    const size_t size = 2 + 2*sizeof(PAIR_FIRST_C(pairs)) + 1;
+    char buffer[size];
+    for(size_t i = 0; i < ROUNDS+1; i++) {
+        dump_buffer(&pairs[i].c, sizeof(pairs[i].c), buffer);
+        printf("C(%lu) = %s\n",i,  buffer);
+        dump_buffer(&pairs[i].d, sizeof(pairs[i].d), buffer);
+        printf("D(%lu) = %s\n", i, buffer);
+        puts("");
+    }
 }

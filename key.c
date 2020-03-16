@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <endian.h>
 
 #include "key.h"
 #include "dump.h"
@@ -16,6 +17,7 @@ int key_from_file(key *key, const char *file)
         code = EXIT_FAILURE;
 
     fclose(fp);
+    *key = htole64(*key); // always the key is in BE
     return code;
 }
 
@@ -66,11 +68,16 @@ const uint8_t pc1[KEY_ENC_BITS_USED_SIZE] = {
 const size_t KEY_N_BITS = KEY_SIZE * 8;
 
 // _subkey generates a subkey based of a pc provided
-// this generates the first round of permutation
+// this generates the first round of permutation of the key
 static key _subkey(key orig_key, const uint8_t *pc)
 {
     key sub = 0;
     for (size_t i = 0; i < KEY_ENC_BITS_USED_SIZE; i++)
+        // KEY_ENC_BITS_USED_SIZE -1 - i basically the hole resulting key has a width of 56 bits
+        // when we compose the key, we are should compose it again in BE format
+        // that's why we shift to the left in reverse, i=0, 55, i=1, 54 ..
+        // KEY_N_BITS - pc[i] it's just computing how much to shift to the right in order to land that
+        // bit we are interested in the first position. With the 0x1 mask we can have always value of 0x0 or 0x1
         sub |= (orig_key >> (KEY_N_BITS - pc[i]) & 0x1) << (KEY_ENC_BITS_USED_SIZE - 1 - i);
     return sub;
 }

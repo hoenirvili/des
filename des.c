@@ -88,7 +88,7 @@ static uint32_t shift_rotate_left(uint32_t n)
 
 #define ROUNDS 16
 
-const uint8_t left_shifts[ROUNDS] = {1,1,2,2,2,2,2,2,1,2,2,2,2,2,2,1};
+const uint8_t left_shifts[ROUNDS] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
 
 static void shift_rotate_left_pairs(uint32_t c0, uint32_t d0, struct pair* pairs)
 {
@@ -115,7 +115,34 @@ static void shift_rotate_left_pairs(uint32_t c0, uint32_t d0, struct pair* pairs
     }
 }
 
-static void dump_pairs(struct pair* pairs);
+/* static void dump_pairs(struct pair* pairs) */
+/* { */
+/*     // 0x + 4 byte value hex + '\0' */
+/*     const size_t size = 2 + 2*sizeof(PAIR_FIRST_C(pairs)) + 1; */
+/*     char buffer[size]; */
+/*     for(size_t i = 0; i < ROUNDS+1; i++) { */
+/*         dump_buffer(&pairs[i].c, sizeof(pairs[i].c), buffer); */
+/*         printf("C(%lu) = %s\n",i,  buffer); */
+/*         dump_buffer(&pairs[i].d, sizeof(pairs[i].d), buffer); */
+/*         printf("D(%lu) = %s\n", i, buffer); */
+/*         puts(""); */
+/*     } */
+/* } */
+
+static void load_keys(key *keys, struct pair *pairs)
+{
+    for (size_t i = 0; i < ROUNDS; i++) {
+        keys[i] = pairs[i].c;
+        keys[i] <<= 28;
+        keys[i] |= pairs[i].d;
+    }
+}
+
+static void encode_subkeys(key *keys)
+{
+    for (size_t i = 0; i < ROUNDS; i++)
+        keys[i] = subkey_pc2(keys[i]);
+}
 
 int des_encrypt(key inkey, const char *input)
 {
@@ -123,52 +150,19 @@ int des_encrypt(key inkey, const char *input)
     if (!padin)
         return EXIT_FAILURE;
 
-    const key skey = subkey(inkey);
+    // generate subkey based on pc1
+    const key skey = subkey_pc1(inkey);
+    // split the 56 bit subkey into c0,d0
     struct pair pairs[ROUNDS+1] = {0};
     load_split(&PAIR_FIRST(pairs), skey);
-    dump_stdout(&skey, sizeof(skey));
-
-    assert(skey == 0xF0CCAAF556678F);
-
-    dump_stdout(&PAIR_FIRST_C(pairs), sizeof(PAIR_FIRST_C(pairs)));
-    dump_stdout(&PAIR_FIRST_D(pairs), sizeof(PAIR_FIRST_D(pairs)));
-
-    assert(pairs[0].d == 0x556678F);
-    assert(pairs[0].c == 0xF0CCAAF);
-
+    // use c0,d0 to generate all 16 pairs c1..c16,d1..d16
     shift_rotate_left_pairs(PAIR_FIRST_C(pairs), PAIR_FIRST_D(pairs), &pairs[1]);
-
-    dump_pairs(pairs);
-
-    assert(pairs[1].c == 0xE19955F);
-    assert(pairs[1].d == 0xAACCF1E);
-
-    assert(pairs[2].c == 0xC332ABF);
-    assert(pairs[2].d == 0x5599E3D);
-
-    assert(pairs[14].c == 0xFE19955);
-    assert(pairs[14].d == 0xEAACCF1);
-
-    assert(pairs[15].c == 0xF866557);
-    assert(pairs[15].d == 0xAAB33C7);
-
-    assert(pairs[16].c == 0xF0CCAAF);
-    assert(pairs[16].d == 0x556678F);
-
-    free(padin);
+    // merge the 16 pairs into 16 keys
+    key keys[ROUNDS] = { 0 };
+    load_keys(keys, &pairs[1]);
+    // encode all 16 keys usinc pc2
+    encode_subkeys(keys);
+    //TODO(hoenir): fix this
     return EXIT_SUCCESS;
 }
 
-static void dump_pairs(struct pair* pairs)
-{
-    // 0x + 4 byte value hex + '\0'
-    const size_t size = 2 + 2*sizeof(PAIR_FIRST_C(pairs)) + 1;
-    char buffer[size];
-    for(size_t i = 0; i < ROUNDS+1; i++) {
-        dump_buffer(&pairs[i].c, sizeof(pairs[i].c), buffer);
-        printf("C(%lu) = %s\n",i,  buffer);
-        dump_buffer(&pairs[i].d, sizeof(pairs[i].d), buffer);
-        printf("D(%lu) = %s\n", i, buffer);
-        puts("");
-    }
-}

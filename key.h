@@ -4,7 +4,6 @@
 
 typedef uint64_t key;
 
-#define KEY_ENC_BITS_USED_SIZE 56
 
 #define KEY_SIZE sizeof(uint64_t)
 
@@ -37,4 +36,11 @@ extern int key_generate(key *key);
  * subkey returns the 56 bit key from the initial permutation with it's PC1.
  * The resulting key is in BE format. The input key orig_key should be in BE format
  */
-extern key subkey(key orig_key);
+extern key subkey_pc1(key orig_key);
+
+/**
+ * subkey returns the 56 bit key from the initial permutation with it's PC2.
+ * The resulting key is in BE format. The input key orig_key should be in BE format
+ */
+extern key subkey_pc2(key orig_key);
+

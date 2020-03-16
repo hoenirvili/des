@@ -100,5 +100,5 @@ static key _subkey48(key orig_key, const uint8_t *pc)
     return sub;
 }
 
-key subkey_pc1(key orig_key) { return _subkey56(orig_key, pc1); }
-key subkey_pc2(key orig_key) { return _subkey48(orig_key, pc2); }
+key key_sub_pc1(key orig_key) { return _subkey56(orig_key, pc1); }
+key key_sub_pc2(key orig_key) { return _subkey48(orig_key, pc2); }

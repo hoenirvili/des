@@ -33,14 +33,14 @@ extern void key_to_hex(key key, char *out);
 extern int key_generate(key *key);
 
 /**
- * subkey returns the 56 bit key from the initial permutation with it's PC1.
+ * key_sub_pc1 returns the 56 bit key from the initial permutation with it's PC1.
  * The resulting key is in BE format. The input key orig_key should be in BE format
  */
-extern key subkey_pc1(key orig_key);
+extern key key_sub_pc1(key orig_key);
 
 /**
- * subkey returns the 56 bit key from the initial permutation with it's PC2.
+ * key_sub_pc returns the 48 bit key from the initial permutation with it's PC2.
  * The resulting key is in BE format. The input key orig_key should be in BE format
  */
-extern key subkey_pc2(key orig_key);
+extern key key_sub_pc2(key orig_key);
 

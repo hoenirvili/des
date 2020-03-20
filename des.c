@@ -24,16 +24,16 @@ static const uint8_t IP[64] = {
     63, 55, 47, 39, 31, 23, 15, 7
 };
 
-/* static const uint8_t IP1[64] ={ */
-/*     40, 8, 48, 16, 56, 24, 64, 32, */
-/*     39, 7, 47, 15, 55, 23, 63, 31, */
-/*     38, 6, 46, 14, 54, 22, 62, 30, */
-/*     37, 5, 45, 13, 53, 21, 61, 29, */
-/*     36, 4, 44, 12, 52, 20, 60, 28, */
-/*     35, 3, 43, 11, 51, 19, 59, 27, */
-/*     34, 2, 42, 10, 50, 18, 58, 26, */
-/*     33, 1, 41,  9, 49, 17, 57, 25 */
-/* }; */
+static const uint8_t IP1[64] ={
+    40, 8, 48, 16, 56, 24, 64, 32,
+    39, 7, 47, 15, 55, 23, 63, 31,
+    38, 6, 46, 14, 54, 22, 62, 30,
+    37, 5, 45, 13, 53, 21, 61, 29,
+    36, 4, 44, 12, 52, 20, 60, 28,
+    35, 3, 43, 11, 51, 19, 59, 27,
+    34, 2, 42, 10, 50, 18, 58, 26,
+    33, 1, 41,  9, 49, 17, 57, 25
+};
 
 static char *input_with_padding(const char *input)
 {
@@ -150,6 +150,14 @@ static uint64_t initial_permutation(uint64_t m, const uint8_t *pc) {
     return ip;
 }
 
+static uint64_t last_ip_permutation(uint64_t value, const uint8_t *pc)
+{
+    size_t res = 0;
+    for (size_t i = 0 ; i<64; i++)
+        res |= (value >> (64 - pc[i]) & 0x1) << (64 - 1 - i);
+    return res;
+}
+
 static const uint8_t ebit_selection_table[48] = {
       32,  1,  2,  3,  4,  5,
        4,  5,  6,  7,  8,  9,
@@ -217,6 +225,24 @@ static const uint8_t S8[4][16] = {
     { 2,  1, 14,  7,  4, 10,  8, 13, 15, 12,  9,  0,  3,  5,  6, 11}
 };
 
+static const uint8_t p[32] = {
+     16,   7,  20,  21,
+     29,  12,  28,  17,
+      1,  15,  23,  26,
+      5,  18,  31,  10,
+      2,   8,  24,  14,
+     32,  27,   3,   9,
+     19,  13,  30,   6,
+     22,  11,   4,  25
+};
+
+static uint32_t last_permutation_in_f(uint32_t value, const uint8_t *pc) {
+    size_t res = 0;
+    for (size_t i = 0 ; i<32; i++) {
+        res |= (value >> (32 - pc[i]) & 0x1) << (32 - 1 - i);
+    }
+    return res;
+}
 
 static uint64_t expand_block(uint64_t block, const uint8_t* pc)
 {
@@ -229,7 +255,7 @@ static uint64_t expand_block(uint64_t block, const uint8_t* pc)
 
 static uint8_t first_last_bits_to_n(uint8_t b)
 {
-    return ((b & 0x20) >> 5) | (b & 0x1);
+    return ((b & 0x20) >> 4) | (b & 0x1);
 }
 
 static uint8_t middle_four_bits_to_n(uint8_t b)
@@ -237,28 +263,15 @@ static uint8_t middle_four_bits_to_n(uint8_t b)
     return ((b & 0x1E) >> 1);
 }
 
-/* assert(ARRAY_SIZE(ebit_selection_table) == 48); */
-/* assert(eblock == 0x7A15557A1555); */
-/* assert(r == 0x6117BA866527); */
 static uint64_t f(uint32_t block, key key)
 {
     uint64_t eblock = expand_block(block, ebit_selection_table);
     // we are only interested of the 48 bits
     uint64_t res = (eblock ^ key) & 0xFFFFFFFFFFFF;
-    assert(res == 0x6117BA866527);
 
     uint8_t b[8] = { 0 };
     for (size_t i = 0; i < 8; i++)
         b[i] |= ((res >> (42 - (i * 6))) & 0x3F); // extract every 6 bits
-
-    assert(b[0] == 0x18);
-    assert(b[1] == 0x11);
-    assert(b[2] == 0x1E);
-    assert(b[3] == 0x3A);
-    assert(b[4] == 0x21);
-    assert(b[5] == 0x26);
-    assert(b[6] == 0x14);
-    assert(b[7] == 0x27);
 
     uint32_t sres = 0;
     const uint8_t (*S[8])[4][16] = {&S1, &S2, &S3, &S4, &S5, &S6, &S7, &S8};
@@ -272,10 +285,7 @@ static uint64_t f(uint32_t block, key key)
         sres |= ((*s)[i][j] & 0xF) << (28 - (it * 4));
     }
 
-    // TODO(hoenir): fix res,
-    // it == 3 fails
-    assert(sres == 0x5C82B597); // TODO(still this is not correct)
-    return res;
+    return last_permutation_in_f(sres, p);
 }
 
 int des_encrypt(key inkey, const char *input)
@@ -319,8 +329,14 @@ int des_encrypt(key inkey, const char *input)
         uint32_t aux = r;
         r = l ^ f(r, keys[i]); // r1 == l0 ^ f(r0, k1)
         l = aux; // l1 == r0
-        break;
     }
+
+    uint64_t res = r;
+    res = (res << 32) | l;
+    assert(res == 0xA4CD99543423234);
+
+    size_t c = last_ip_permutation(res, IP1);
+    assert(c == 0x85E813540F0AB405);
 
     return EXIT_SUCCESS;
 }

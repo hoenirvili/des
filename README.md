@@ -1,10 +1,9 @@
 # Des
 
 This is a small command line utility for generating and encrypting messages using the provided 64bit key.
-This is just a dummy implementation that I've done in order to satisfy my curiosity on how to implement top to bottom
-encryption and decryption of a cypher block and because des is a popular cypher block, I've written my own implementation.
+This is just a simplified implementation of DES(ECB mode) that I've done in order to satisfy my curiosity on how to implement a crypto cipher top to bottom.
 
-As rought reference for implementing DES I used the following document: http://page.math.tu-berlin.de/~kant/teaching/hess/krypto-ws2006/des.htm
+I used as a reference implementing DES the following [document](http://page.math.tu-berlin.de/~kant/teaching/hess/krypto-ws2006/des.htm).
 
 
 ```bash

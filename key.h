@@ -2,14 +2,15 @@
 
 #include <stdint.h>
 
+/**
+ * key defines a des key
+ */
 typedef uint64_t key;
 
-
+/**
+ * KEY_SIZE defines how big is the key in bytes
+ */
 #define KEY_SIZE sizeof(uint64_t)
-
-#define KEY_SIZE_STR KEY_SIZE + 1
-
-#define KEY_SIZE_HEX_STR (KEY_SIZE*2) + 2 + 1
 
 /**
  * key_from_file loads the 64 bit key from the file in BE format

@@ -1,18 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 #include <assert.h>
 
 #include "dump.h"
+#include "permutation.h"
+#include "pad.h"
 #include "des.h"
 
-#define CIPHER_BLOCK_SIZE KEY_SIZE
+#define CIPHER_BLOCK_SIZE KEY_SIZE * 8
 
-// The 64 bits of the input block to be enciphered are
-// first subjected to the following permutation,
-// called the initial permutation IP.
-// That is the permuted input has bit 58 of the input
-// as its first bit, bit 50 as its second bit,
-// and so on with bit 7 as its last bit.
 static const uint8_t IP[64] = {
     58, 50, 42, 34, 26, 18, 10, 2,
     60, 52, 44, 36, 28, 20, 12, 4,
@@ -35,21 +32,6 @@ static const uint8_t IP1[64] ={
     33, 1, 41,  9, 49, 17, 57, 25
 };
 
-static char *input_with_padding(const char *input)
-{
-    const size_t n = strlen(input);
-    const size_t r = n % CIPHER_BLOCK_SIZE;
-    if (r != 0) {
-        char *padded = malloc(n + 1 + sizeof(uint64_t)-r);
-        if (!padded)
-            return NULL;
-        memcpy(padded, input, n);
-        memset(padded + n, 0, sizeof(uint64_t)-r+1);
-        return padded;
-    }
-    return strdup(input);
-}
-
 struct pair {
     uint32_t d;
     uint32_t c;
@@ -59,8 +41,7 @@ struct pair {
 #define PAIR_FIRST_C(pairs) pairs[0].c
 #define PAIR_FIRST_D(pairs) pairs[0].d
 
-
-static void load_split(struct pair *pair, key subkey)
+static void load_key_into_pair(struct pair *pair, key subkey)
 {
     memcpy(pair, &subkey, sizeof(*pair));
     uint8_t save = (pair->d & (0xF << 28)) >> 28;
@@ -74,7 +55,7 @@ static void load_split(struct pair *pair, key subkey)
     pair->c |= save;
 }
 
-static uint32_t shift_rotate_left(uint32_t n)
+static inline uint32_t shift_rotate_left(uint32_t n)
 {
     // first we move the bit that we want to rotate to the left
     // we take care the always cut the last 4 bits
@@ -82,7 +63,9 @@ static uint32_t shift_rotate_left(uint32_t n)
     return ((n << 1) & (0x0FFFFFFF)) | ((n & ( 1 << 27)) >> 27);
 }
 
-#define ROUNDS 16
+#define NKEYS 16
+
+#define ROUNDS NKEYS
 
 static const uint8_t left_shifts[ROUNDS] = {1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1};
 
@@ -111,51 +94,28 @@ static void shift_rotate_left_pairs(uint32_t c0, uint32_t d0, struct pair* pairs
     }
 }
 
-/* static void dump_pairs(struct pair* pairs) */
-/* { */
-/*     // 0x + 4 byte value hex + '\0' */
-/*     const size_t size = 2 + 2*sizeof(PAIR_FIRST_C(pairs)) + 1; */
-/*     char buffer[size]; */
-/*     for(size_t i = 0; i < ROUNDS+1; i++) { */
-/*         dump_buffer(&pairs[i].c, sizeof(pairs[i].c), buffer); */
-/*         printf("C(%lu) = %s\n",i,  buffer); */
-/*         dump_buffer(&pairs[i].d, sizeof(pairs[i].d), buffer); */
-/*         printf("D(%lu) = %s\n", i, buffer); */
-/*         puts(""); */
-/*     } */
-/* } */
-
-static void load_keys(key *keys, struct pair *pairs)
+static void load_keys_from_pairs(key *keys, struct pair *pairs)
 {
-    for (size_t i = 0; i < ROUNDS; i++) {
-        keys[i] = pairs[i].c;
-        keys[i] <<= 28;
-        keys[i] |= pairs[i].d;
-    }
+    for (size_t i = 0; i < NKEYS; i++)
+        keys[i] = (((uint64_t)pairs[i].c) << 28) | pairs[i].d;
 }
 
 static void encode_subkeys(key *keys)
 {
-    for (size_t i = 0; i < ROUNDS; i++)
+    for (size_t i = 0; i < NKEYS; i++)
         keys[i] = key_sub_pc2(keys[i]);
 }
 
-
 #define ARRAY_SIZE(arr) sizeof(arr)/sizeof(arr[0])
-static uint64_t initial_permutation(uint64_t m, const uint8_t *pc) {
-    uint64_t ip = 0;
-    const size_t size = sizeof(ip) * 8;
-    for (size_t i = 0; i < size; i++)
-        ip |= (m >> (64 - pc[i]) & 0x1) << (64 - 1 - i);
-    return ip;
+
+static uint64_t initial_permutation(uint64_t m)
+{
+    return permute(m, 64, 64, IP);
 }
 
-static uint64_t last_ip_permutation(uint64_t value, const uint8_t *pc)
+static uint64_t last_ip_permutation(uint64_t value)
 {
-    size_t res = 0;
-    for (size_t i = 0 ; i<64; i++)
-        res |= (value >> (64 - pc[i]) & 0x1) << (64 - 1 - i);
-    return res;
+    return permute(value, 64, 64, IP1);
 }
 
 static const uint8_t ebit_selection_table[48] = {
@@ -236,36 +196,29 @@ static const uint8_t p[32] = {
      22,  11,   4,  25
 };
 
-static uint32_t last_permutation_in_f(uint32_t value, const uint8_t *pc) {
-    size_t res = 0;
-    for (size_t i = 0 ; i<32; i++) {
-        res |= (value >> (32 - pc[i]) & 0x1) << (32 - 1 - i);
-    }
-    return res;
-}
-
-static uint64_t expand_block(uint64_t block, const uint8_t* pc)
+static uint32_t last_permutation_in_f(uint32_t value)
 {
-    uint64_t expand = 0;
-    for (size_t i = 0; i < 48; i++)
-        expand |= (block >> (32 - pc[i]) & 0x1) << (48 - 1 - i);
-    return expand;
-
+    return permute(value, 32, 32, p);
 }
 
-static uint8_t first_last_bits_to_n(uint8_t b)
+static uint64_t expand_block(uint64_t block)
+{
+    return permute(block, 32, 48, ebit_selection_table);
+}
+
+static inline uint8_t first_last_bits_to_n(uint8_t b)
 {
     return ((b & 0x20) >> 4) | (b & 0x1);
 }
 
-static uint8_t middle_four_bits_to_n(uint8_t b)
+static inline uint8_t middle_four_bits_to_n(uint8_t b)
 {
     return ((b & 0x1E) >> 1);
 }
 
 static uint64_t f(uint32_t block, key key)
 {
-    uint64_t eblock = expand_block(block, ebit_selection_table);
+    uint64_t eblock = expand_block(block);
     // we are only interested of the 48 bits
     uint64_t res = (eblock ^ key) & 0xFFFFFFFFFFFF;
 
@@ -277,67 +230,53 @@ static uint64_t f(uint32_t block, key key)
     const uint8_t (*S[8])[4][16] = {&S1, &S2, &S3, &S4, &S5, &S6, &S7, &S8};
 
     for (size_t it = 0; it<8; it++) {
-        const uint8_t (*s)[4][16] = S[it]; // get the appropriate S
-
+        // pick the right S based on the interation
+        const uint8_t (*s)[4][16] = S[it];
+        // pick i, j
         uint8_t i = first_last_bits_to_n(b[it]);
         uint8_t j = middle_four_bits_to_n(b[it]);
         // extract only the first 4 bits and compute the number in BE format
         sres |= ((*s)[i][j] & 0xF) << (28 - (it * 4));
     }
 
-    return last_permutation_in_f(sres, p);
+    return last_permutation_in_f(sres);
 }
 
-int des_encrypt(key inkey, const char *input)
+static void generate_subkeys(key inkey, key *keys)
 {
-    char *padin = input_with_padding(input);
-    if (!padin)
-        return EXIT_FAILURE;
-
-    // generate subkey based on pc1
     const key skey = key_sub_pc1(inkey);
-    // split the 56 bit subkey into c0,d0
-    struct pair pairs[ROUNDS+1] = {0};
-    load_split(&PAIR_FIRST(pairs), skey);
-    // use c0,d0 to generate all 16 pairs c1..c16,d1..d16
+    struct pair pairs[NKEYS+1] = {0};
+    load_key_into_pair(&PAIR_FIRST(pairs), skey);
     shift_rotate_left_pairs(PAIR_FIRST_C(pairs), PAIR_FIRST_D(pairs), &pairs[1]);
-    // merge the 16 pairs into 16 keys
-    key keys[ROUNDS] = { 0 };
-    load_keys(keys, &pairs[1]);
-    // encode all 16 keys using pc2
+    load_keys_from_pairs(keys, &pairs[1]);
     encode_subkeys(keys);
+}
 
+char* des_encrypt(key k, const char *input)
+{
+    char *pinput = pad(input);
+    size_t len = strlen(pinput);
 
-    // TODO(hoenir):
-    // make the initial permutation for the hole message not just for m
-    // this is for testing purposes
-    uint64_t m = 0x123456789ABCDEF;
-    m = initial_permutation(m, IP);
-    assert(m == 0xCC00CCFFF0AAF0AA);
+    key keys[NKEYS] = { 0 };
+    generate_subkeys(k, keys);
 
-    /* size_t n = strlen(padin); */
-    /* for (size_t i = 0; i < n; i = i + sizeof(m)) { */
-    /*     uint64_t m = 0; */
-    /*     memcpy(&m, &padin[i], sizeof(m)); */
-    /*     m = initial_permutation(m, IP); */
-    /*     memcpy(&padin[i], &m, sizeof(m)); */
-    /* } */
+    uint64_t m = 0;
+    for (size_t i = 0; i < len; i = i + sizeof(m)) {
+        memcpy(&m, &pinput[i], sizeof(m));
+        m = initial_permutation(m);
 
-    uint32_t l = (m >> 32); // l0
-    uint32_t r = m; //r0
-    for (size_t i = 0; i < ROUNDS; i++) {
-        uint32_t aux = r;
-        r = l ^ f(r, keys[i]); // r1 == l0 ^ f(r0, k1)
-        l = aux; // l1 == r0
+        uint32_t l = (m >> 32);
+        uint32_t r = m;
+        for (size_t i = 0; i < NKEYS; i++) {
+            uint32_t aux = r;
+            r = l ^ f(r, keys[i]);
+            l = aux;
+        }
+        uint64_t res = r;
+        res = (res << 32) | l;
+        uint64_t c = last_ip_permutation(res);
+        memcpy(&pinput[i], &c, sizeof(c));
     }
 
-    uint64_t res = r;
-    res = (res << 32) | l;
-    assert(res == 0xA4CD99543423234);
-
-    size_t c = last_ip_permutation(res, IP1);
-    assert(c == 0x85E813540F0AB405);
-
-    return EXIT_SUCCESS;
+    return pinput;
 }
-

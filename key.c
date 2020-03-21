@@ -4,6 +4,7 @@
 #include <endian.h>
 
 #include "key.h"
+#include "permutation.h"
 #include "dump.h"
 
 int key_from_file(key *key, const char *file)
@@ -76,29 +77,12 @@ const uint8_t pc2[48] = {
      46, 42, 50, 36, 29, 32
 };
 
-// _subkey generates a subkey based of a pc provided
-// this generates the first round of permutation of the key
-static key _subkey56(key orig_key, const uint8_t *pc)
+key key_sub_pc1(key orig_key)
 {
-    key sub = 0;
-    for (size_t i = 0; i < 56; i++)
-        // 56 - 1 - i basically the hole resulting key has a width of 56 bits
-        // when we compose the key, we are should compose it again in BE format
-        // that's why we shift to the left in reverse, i=0, 55, i=1, 54 ..
-        // 64 - pc[i] it's just computing how much to shift to the right in order to land that
-        // bit we are interested in the first position. With the 0x1 mask we can have always value of 0x0 or 0x1
-        sub |= (orig_key >> (64 - pc[i]) & 0x1) << (56 - 1 - i);
-    return sub;
+    return permute(orig_key, 64, 56, pc1);
 }
 
-
-static key _subkey48(key orig_key, const uint8_t *pc)
+key key_sub_pc2(key orig_key)
 {
-    key sub = 0;
-    for (size_t i = 0; i < 48; i++)
-        sub |= (orig_key >> (56 - pc[i]) & 0x1) << (48 - 1 - i);
-    return sub;
+    return permute(orig_key, 56, 48, pc2);
 }
-
-key key_sub_pc1(key orig_key) { return _subkey56(orig_key, pc1); }
-key key_sub_pc2(key orig_key) { return _subkey48(orig_key, pc2); }

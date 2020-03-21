@@ -6,7 +6,7 @@
 #include "key.h"
 #include "des.h"
 
-const char *optstring="ghk:";
+static const char *optstring="ghk:";
 
 static const struct option longopts[] = {
     {"generate-key", no_argument, NULL, 'g'},
@@ -16,17 +16,18 @@ static const struct option longopts[] = {
 };
 
 struct args {
-    bool generate_key; /*generate random 64 bit key*/
-    char *input; /*input text*/
-    key key;
+    bool generate_key;  /*generate random 64 bit key*/
+    char *input;        /*input text*/
+    key key;            /*the des private key*/
 };
 
-const char *key_name = "des.key";
+static const char *key_name = "des.key";
 
-int run(struct args args)
+#define KEY_SIZE_HEX_STR (KEY_SIZE * 2) + 2 + 1
+
+static int run(struct args args)
 {
     if (args.generate_key) {
-        puts("[*] Generating random 64 bit key");
         key key;
         int err = key_generate(&key);
         if (err < 0)
@@ -44,13 +45,14 @@ int run(struct args args)
 
     char hex_key[KEY_SIZE_HEX_STR];
     key_to_hex(args.key, hex_key);
-    printf("[*] Encrypt, input: %s\n", args.input);
-    printf("[*] Using the key hex: %s\n", hex_key);
 
-    return des_encrypt(args.key, args.input);
+    char *out = des_encrypt(args.key, args.input);
+    printf("%s\n", out); // this should be piped into stdout or file
+    free(out);
+    return EXIT_SUCCESS;
 }
 
-const char *help_menu =
+static const char *help_menu =
 "des encryption cipher                              \n"
 "des -k des.key [-g] input                          \n"
 "--help, -h             print out the help message  \n"
@@ -66,7 +68,7 @@ int main(int argc, char **argv)
     }
 
     int ch = 0;
-    struct args args = {0};
+    struct args args = { 0 };
     while (ch != -1) {
         ch = getopt_long(argc, argv, optstring, longopts, NULL);
         switch (ch) {
@@ -78,7 +80,7 @@ int main(int argc, char **argv)
                 return EXIT_SUCCESS;
             case 'k':
                 if (key_from_file(&args.key, optarg) < 0) {
-                    printf("[*] Canot load from file '%s' key", optarg);
+                    printf("[!] Cannot load from file '%s' key", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -106,4 +108,3 @@ int main(int argc, char **argv)
 
     return err;
 }
-

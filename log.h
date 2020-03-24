@@ -12,11 +12,11 @@ extern void log_activate(bool activate);
  *
  * Write messages to stdout
  */
-extern void log_debug(const char *message);
+extern void log_debug(const char *message, ...);
 
 /**
  * log_error
  *
  * write messages to stderr
  */
-extern void log_error(const char *message);
+extern void log_error(const char *message, ...);

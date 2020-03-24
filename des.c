@@ -272,6 +272,7 @@ char* des_encrypt(key k, const char *input)
             r = l ^ f(r, keys[i]);
             l = aux;
         }
+
         uint64_t res = r;
         res = (res << 32) | l;
         uint64_t c = last_ip_permutation(res);

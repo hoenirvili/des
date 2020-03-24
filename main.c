@@ -152,7 +152,7 @@ int main(int argc, char **argv)
                 return EXIT_SUCCESS;
             case 'k':
                 if (key_from_file(&args.key, optarg) < 0) {
-                    printf("[!] Cannot load from file '%s' key", optarg);
+                    log_error("Cannot load from file '%s' key", optarg);
                     return EXIT_FAILURE;
                 }
                 break;
@@ -160,7 +160,7 @@ int main(int argc, char **argv)
                 log_activate(true);
                 break;
             case '?':
-                fprintf(stderr, "[!] Invalid argument: %s\n", optarg);
+                log_error("Invalid argument: %s\n", optarg);
                 return EXIT_FAILURE;
         }
     }
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 
 cnt:
     if (optind < argc) {
-        fprintf(stderr, "[!] It requires just one input message, aka \"input\", \"one multi word input\" \n");
+        log_error("[!] It requires just one input message, aka \"input\", \"one multi word input\" \n");
         return EXIT_FAILURE;
     }
 
@@ -200,6 +200,6 @@ cnt:
 
     int err = run(args);
     if (err != 0)
-        fprintf(stderr, "Internal error");
+        log_error("Internal error");
     return err;
 }

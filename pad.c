@@ -23,10 +23,8 @@ struct pad_input pad(const char* input, size_t n)
     return (struct pad_input){ .blocks = padded, n = blocks};
 }
 
-ssize_t pad_remove(struct pad_input pi)
+size_t pad_remove(struct pad_input pi)
 {
-    if ((pi.blocks == NULL) || (pi.n == 0))
-        return -1;
     size_t last = pi.n - 1;
     char *byte = (char*)(&pi.blocks[last]);
     memset(byte, 0, *byte);

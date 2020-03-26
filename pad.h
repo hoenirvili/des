@@ -30,4 +30,4 @@ struct pad_input{
   * In case of error this return -1
   *
   */
- extern ssize_t pad_remove(struct pad_input pi);
+ extern size_t pad_remove(struct pad_input pi);

@@ -287,6 +287,7 @@ void des_decrypt(key k, uint64_t *input, size_t len)
         uint64_t res = r;
         res = (res << 32) | l;
         uint64_t c = last_ip_permutation(res);
+        c = htobe64(c);
         memcpy(&input[it], &c, sizeof(c));
     }
 }

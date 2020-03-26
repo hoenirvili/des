@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
+#include <assert.h>
 
 #include "key.h"
 #include "pad.h"
@@ -139,23 +140,14 @@ static int run(struct args args)
             log_error("Invalid des encrypted format as input, every block should be 64bit");
             return EXIT_FAILURE;
         }
-        size_t n = args.input.len / sizeof(uint64_t);
-        uint64_t *blocks = (uint64_t*)args.input.value;
+        const size_t n = args.input.len / sizeof(uint64_t);
+        uint64_t *const blocks = (uint64_t*)args.input.value;
         des_decrypt(args.key, blocks, n);
-        ssize_t bytes_removed = pad_remove((struct pad_input){.blocks = blocks, .n = n});
-        if (bytes_removed < 0) {
-            log_error("Cannot remove padding from decrypted bytes");
-            return EXIT_FAILURE;
-        }
-        size_t nblocks = n * sizeof(*blocks);
-        for (size_t i = 0 ; i < nblocks; i++)
-            blocks[i] = htobe64(blocks[i]);
-
+        const size_t bytes_removed = pad_remove((struct pad_input) {.blocks = blocks, .n = n});
         size_t nblocks_without_padding = n * sizeof(*blocks) - bytes_removed;
         fwrite(blocks, sizeof(char), nblocks_without_padding, stdout);
     }
 
-    free(args.input.value);
     return EXIT_SUCCESS;
 }
 
@@ -233,11 +225,15 @@ cnt:
             log_error("Cannot read input from pipe to stdin");
             return err;
         }
+
         if (args.input.len < BUFSIZ)
             args.input.cap = BUFSIZ;
         else
             args.input.cap = args.input.len;
     }
 
-    return run(args);
+
+    int err = run(args);
+    free(args.input.value);
+    return err;
 }

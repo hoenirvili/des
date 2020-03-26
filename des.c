@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dump.h"
 #include "permutation.h"
 #include "des.h"
 

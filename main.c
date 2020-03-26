@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "key.h"
+#include "pad.h"
 #include "des.h"
 #include "log.h"
 
@@ -15,7 +16,7 @@ static const struct option longopts[] = {
     {"generate-key", no_argument, NULL, 'g'},
     {"key", required_argument, NULL, 'k'},
     {"help", no_argument, NULL, 'h'},
-    {"verbose", no_argument, NULL, 'v'},
+    {"decrypt", no_argument, NULL, 'd'},
     {},
 };
 
@@ -28,6 +29,7 @@ struct input {
 struct args {
     bool generate_key;  /*generate random 64 bit key*/
     struct input input; /*input for encryption or decryption*/
+    bool decrypt;       /*true if we want to decrypt the input*/
     key key;            /*the des private key*/
 };
 
@@ -43,7 +45,6 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
         log_error("calloc failed");
         return EXIT_FAILURE;
     }
-
     size_t offset = 0;
     ssize_t size = BUFSIZ;
     for (;;) {
@@ -58,7 +59,6 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
             buff = nbuff;
             size = BUFSIZ;
         }
-
         ssize_t n = fread(&buff[offset], sizeof(*buff), size, fp);
         if (n == BUFSIZ) {
             offset += n;
@@ -72,13 +72,10 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
             buff = nbuff;
             size = BUFSIZ;
         }
-
         if ((n > 0) && (n != BUFSIZ)) {
             offset += n;
             size -= n;
         }
-
-
         if (n < 0) {
             if ((ferror(fp) != 0)) {
                 log_error("fread failed");
@@ -86,10 +83,8 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
                 return EXIT_FAILURE;
             }
         }
-
         if (n == 0)
             break;
-
     }
 
     *n = offset;
@@ -116,10 +111,51 @@ static int run(struct args args)
         return EXIT_FAILURE;
     }
 
-    char *out = des_encrypt(args.key, args.input.value);
-    printf("%s\n", out);
+    if (!args.key) {
+        log_error("No key passed, please try and pass a key like example --key, -k des.key");
+        return EXIT_FAILURE;
+    }
 
-    free(out);
+    if (!args.decrypt) {
+        // pad inpyt bytes in PKCS5 form
+        struct pad_input pi = pad(args.input.value, args.input.len);
+        if (!pi.blocks) {
+            log_error("padding input failed");
+            return EXIT_FAILURE;
+        }
+
+        // still we loaded from stdin blocks in machine form (le)
+        // we should transform every 64bit block in BE from
+        // before running the encryption
+        for (size_t i = 0; i < pi.n; i++)
+            pi.blocks[i] = htobe64(pi.blocks[i]);
+
+        des_encrypt(args.key, pi.blocks, pi.n);
+        // dump every bytes to stdout by default
+        fwrite(pi.blocks, sizeof(*pi.blocks), pi.n, stdout);
+        free(pi.blocks);
+    } else {
+        if (args.input.len % sizeof(uint64_t) != 0) {
+            log_error("Invalid des encrypted format as input, every block should be 64bit");
+            return EXIT_FAILURE;
+        }
+        size_t n = args.input.len / sizeof(uint64_t);
+        uint64_t *blocks = (uint64_t*)args.input.value;
+        des_decrypt(args.key, blocks, n);
+        ssize_t bytes_removed = pad_remove((struct pad_input){.blocks = blocks, .n = n});
+        if (bytes_removed < 0) {
+            log_error("Cannot remove padding from decrypted bytes");
+            return EXIT_FAILURE;
+        }
+        size_t nblocks = n * sizeof(*blocks);
+        for (size_t i = 0 ; i < nblocks; i++)
+            blocks[i] = htobe64(blocks[i]);
+
+        size_t nblocks_without_padding = n * sizeof(*blocks) - bytes_removed;
+        fwrite(blocks, sizeof(char), nblocks_without_padding, stdout);
+    }
+
+    free(args.input.value);
     return EXIT_SUCCESS;
 }
 
@@ -127,7 +163,7 @@ static const char *help_menu =
 "des encryption cipher                              \n"
 "des -k des.key [-g] input                          \n"
 "--help, -h             print out the help message  \n"
-"--verbose, -v          run program in verbose mode \n"
+"--decrypt, -d          decrypt the input           \n"
 "--generate-key, -g     generate random 64bit key   \n"
 "--key, -k              input key for enc and dec";
 
@@ -156,8 +192,8 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 }
                 break;
-            case 'v':
-                log_activate(true);
+            case 'd':
+                args.decrypt = true;
                 break;
             case '?':
                 log_error("Invalid argument: %s\n", optarg);
@@ -182,11 +218,16 @@ int main(int argc, char **argv)
 
 cnt:
     if (optind < argc) {
-        log_error("[!] It requires just one input message, aka \"input\", \"one multi word input\" \n");
+        log_error("It requires just one input message, aka \"input\", \"one multi word input\"");
         return EXIT_FAILURE;
     }
 
     if (!args.input.value) {
+        if (isatty(fileno(stdin))) {
+            log_error("Passing input from terminal not supported, use args or pipe the input");
+            return EXIT_FAILURE;
+        }
+        // we load from stdin bytes in machine form(le)
         int err = loadto(&args.input.value, &args.input.len, stdin);
         if (err) {
             log_error("Cannot read input from pipe to stdin");
@@ -198,8 +239,5 @@ cnt:
             args.input.cap = args.input.len;
     }
 
-    int err = run(args);
-    if (err != 0)
-        log_error("Internal error");
-    return err;
+    return run(args);
 }

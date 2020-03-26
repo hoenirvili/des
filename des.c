@@ -1,11 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
-#include <assert.h>
 
 #include "dump.h"
 #include "permutation.h"
-#include "pad.h"
 #include "des.h"
 
 #define CIPHER_BLOCK_SIZE KEY_SIZE * 8
@@ -252,19 +249,13 @@ static void generate_subkeys(key inkey, key *keys)
     encode_subkeys(keys);
 }
 
-char* des_encrypt(key k, const char *input)
+void des_encrypt(key k, uint64_t *input, size_t len)
 {
-    char *pinput = pad(input);
-    size_t len = strlen(pinput);
-
     key keys[NKEYS] = { 0 };
     generate_subkeys(k, keys);
-
-    uint64_t m = 0;
-    for (size_t i = 0; i < len; i = i + sizeof(m)) {
-        memcpy(&m, &pinput[i], sizeof(m));
+    for (size_t it = 0; it < len; it++) {
+        uint64_t m = input[it];
         m = initial_permutation(m);
-
         uint32_t l = (m >> 32);
         uint32_t r = m;
         for (size_t i = 0; i < NKEYS; i++) {
@@ -272,12 +263,30 @@ char* des_encrypt(key k, const char *input)
             r = l ^ f(r, keys[i]);
             l = aux;
         }
-
         uint64_t res = r;
         res = (res << 32) | l;
         uint64_t c = last_ip_permutation(res);
-        memcpy(&pinput[i], &c, sizeof(c));
+        memcpy(&input[it], &c, sizeof(c));
     }
+}
 
-    return pinput;
+void des_decrypt(key k, uint64_t *input, size_t len)
+{
+    key keys[NKEYS] = { 0 };
+    generate_subkeys(k, keys);
+    for (size_t it = 0; it < len; it++) {
+        uint64_t m = input[it];
+        m = initial_permutation(m);
+        uint32_t l = (m >> 32);
+        uint32_t r = m;
+        for (ssize_t i = NKEYS - 1; i >= 0; --i) {
+            uint32_t aux = r;
+            r = l ^ f(r, keys[i]);
+            l = aux;
+        }
+        uint64_t res = r;
+        res = (res << 32) | l;
+        uint64_t c = last_ip_permutation(res);
+        memcpy(&input[it], &c, sizeof(c));
+    }
 }

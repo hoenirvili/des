@@ -18,7 +18,8 @@ int key_from_file(key *key, const char *file)
         code = EXIT_FAILURE;
 
     fclose(fp);
-    *key = htole64(*key); // always the key is in BE
+    *key = htobe64(*key);
+
     return code;
 }
 

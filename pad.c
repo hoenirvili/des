@@ -27,6 +27,8 @@ size_t pad_remove(struct pad_input pi)
 {
     size_t last = pi.n - 1;
     char *byte = (char*)(&pi.blocks[last]);
-    memset(byte, 0, *byte);
-    return *byte;
+    char c = byte[sizeof(*pi.blocks)-1]; // lastbyte
+    char *s = memchr(byte, c, sizeof(*pi.blocks));
+    memset(s, 0, c);
+    return c;
 }

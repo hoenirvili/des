@@ -1,6 +1,7 @@
+#include <stdio.h>
+
 #include "key.h"
 #include "permutation.h"
-#include "dump.h"
 
 int key_from_file(key *key, const char *file)
 {
@@ -16,11 +17,6 @@ int key_from_file(key *key, const char *file)
     *key = htobe64(*key);
 
     return code;
-}
-
-void key_to_hex(key key, char *out)
-{
-    dump_buffer(&key, sizeof(key), out);
 }
 
 int key_generate(key *key)

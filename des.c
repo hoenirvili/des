@@ -225,7 +225,7 @@ static uint64_t f(uint32_t block, key key)
     const uint8_t (*S[8])[4][16] = {&S1, &S2, &S3, &S4, &S5, &S6, &S7, &S8};
 
     for (size_t it = 0; it<8; it++) {
-        // pick the right S based on the interation
+        // pick the right S based on the iteration
         const uint8_t (*s)[4][16] = S[it];
         // pick i, j
         uint8_t i = first_last_bits_to_n(b[it]);

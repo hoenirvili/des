@@ -23,11 +23,6 @@ extern int key_from_file(key *key, const char *file);
 extern int key_to_file(key key, const char *file);
 
 /**
- * key_to_hex writes the hex byte representation of the key into out buffer
- */
-extern void key_to_hex(key key, char *out);
-
-/**
  * key_generate loads the *key with a random 64 byte value
  * the source of randomness is /dev/urandom
  */

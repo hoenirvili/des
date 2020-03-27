@@ -126,7 +126,7 @@ static int run(struct args args)
             return EXIT_FAILURE;
         }
 
-        // still we loaded from stdin blocks in machine form (le)
+        // we just loaded from stdin blocks in machine form (le)
         // we should transform every 64bit block in BE from
         // before running the encryption
         for (size_t i = 0; i < pi.n; i++)
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
     int ch = 0;
     struct args args = { 0 };
-    while ((ch = getopt_long_only(argc, argv, optstring, longopts, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, optstring, longopts, NULL)) != -1) {
         switch (ch) {
             case 'g':
                 args.generate_key = true;

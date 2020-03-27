@@ -7,7 +7,6 @@ I used as a reference implementing DES the following [document](http://page.math
 
 ```bash
 ➜  des master ✗ make
-
 ➜  des master ✗ ./main --help
 des encryption cipher in ECB mode and using PKCS5.0 padding
 des -k des.key [-g] input
@@ -21,14 +20,13 @@ des -k des.key [-g] input
 ### Generate 64 bit key and encrypt the message using the key
 ```bash
 ➜  des master ✗ ./main --generate-key des.key 
-[*] Generate 64 random key
-➜  des master ✗ echo "This is just a simple plaintext that we want to encrypt" | ./main --key des.key > encrypted.txt
+➜  des master ✗ echo -n "This is just a simple plaintext that we want to encrypt" | ./main --key des.key > encrypted.txt
 ➜  des master ✗ hexdump -C encrypted.txt 
-00000000  c9 f6 1e 97 93 92 b1 c1  07 14 f3 8b 78 56 70 3d  |............xVp=|
-00000010  1e 99 9d 34 77 c7 60 fb  ad b2 94 3f 4c f7 eb 0f  |...4w.`....?L...|
-00000020  47 45 82 1b 79 9a a1 65  cb ac 95 be b0 0e 13 c8  |GE..y..e........|
-00000030  d9 97 77 df 5c a2 af a5  61 d8 d0 fa 3a aa db 12  |..w.\...a...:...|
-00000040
+00000000  6e 44 22 a0 ab b0 dd 69  f0 53 20 6c 47 c4 35 d9  |nD"....i.S lG.5.|
+00000010  e1 46 9f f8 8d 0c 70 84  30 da 7c 64 d2 fb de 10  |.F....p.0.|d....|
+00000020  a3 20 60 31 fd 01 88 d3  cb f6 2d 32 48 50 f0 08  |. `1......-2HP..|
+00000030  b9 9b 15 f8 5b 03 6c 59                           |....[.lY|
+00000038
 ```
 
 ### Decrypt encrypted plaintext using the same key
@@ -39,6 +37,6 @@ des -k des.key [-g] input
 00000000  54 68 69 73 20 69 73 20  6a 75 73 74 20 61 20 73  |This is just a s|
 00000010  69 6d 70 6c 65 20 70 6c  61 69 6e 74 65 78 74 20  |imple plaintext |
 00000020  74 68 61 74 20 77 65 20  77 61 6e 74 20 74 6f 20  |that we want to |
-00000030  65 6e 63 72 79 70 74 0a  00 00 00 00 00 00 00 00  |encrypt.........|
-00000040
+00000030  65 6e 63 72 79 70 74                              |encrypt|
+00000037
 ```

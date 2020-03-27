@@ -9,11 +9,11 @@ I used as a reference implementing DES the following [document](http://page.math
 ➜  des master ✗ make
 
 ➜  des master ✗ ./main --help
-des encryption cipher                              
-des -k des.key [-g] input                          
---help, -h             print out the help message  
---decrypt, -d          decrypt the input           
---generate-key, -g     generate random 64bit key   
+des encryption cipher in ECB mode and using PKCS5.0 padding
+des -k des.key [-g] input
+--help, -h             print out the help message
+--decrypt, -d          decrypt the input
+--generate-key, -g     generate random 64bit key
 --key, -k              input key for enc and dec
 ```
 

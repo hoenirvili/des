@@ -13,7 +13,8 @@ struct pad_input{
  *
  * Pads the input string with bytes in PKCS5 specified in RFC2898 section 6.1.1 number 4
  *
- * input - input string terminated with '\0'
+ * input - input string (that is not necessary be terminated with \0)
+ * len   - how many bytes we have in *input*
  *
  * The returned is a new ptr to the resulting padded string. In case of errors this will return NULL
  * and setting errno to the appropriate error code
@@ -27,7 +28,8 @@ struct pad_input{
   *
   * Removes padding added by *pad*
   *
-  * In case of error this return -1
+  * pi  - input padded struct that holds the input 64 bit blocks and len
   *
+  * In case of error this return -1
   */
  extern size_t pad_remove(struct pad_input pi);

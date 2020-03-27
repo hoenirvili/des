@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <string.h>
+
 #include "dump.h"
 
 void dump_stdout(const void *b, size_t size)

@@ -1,8 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <endian.h>
-
 #include "key.h"
 #include "permutation.h"
 #include "dump.h"

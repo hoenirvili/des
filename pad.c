@@ -1,6 +1,6 @@
-#include "pad.h"
-
 #include <string.h>
+
+#include "pad.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
 

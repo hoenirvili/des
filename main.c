@@ -11,13 +11,13 @@
 #include "des.h"
 #include "log.h"
 
-static const char *optstring="ghk:";
+static const char *optstring="g::hk:d";
 
 static const struct option longopts[] = {
-    {"generate-key", no_argument, NULL, 'g'},
+    {"generate-key", optional_argument, NULL, 'g'},
     {"key", required_argument, NULL, 'k'},
     {"help", no_argument, NULL, 'h'},
-    {"decrypt", no_argument, NULL, 'd'},
+    {"decrypt",no_argument, NULL, 'd'},
     {},
 };
 
@@ -28,10 +28,11 @@ struct input {
 };
 
 struct args {
-    bool generate_key;  /*generate random 64 bit key*/
-    struct input input; /*input for encryption or decryption*/
-    bool decrypt;       /*true if we want to decrypt the input*/
-    key key;            /*the des private key*/
+    bool generate_key;      /*generate random 64 bit key*/
+    const char *key_name;   /*key file name to generate, default to des.key*/
+    struct input input;     /*input for encryption or decryption*/
+    bool decrypt;           /*true if we want to decrypt the input*/
+    key key;                /*the des private key*/
 };
 
 static const char *key_name = "des.key";
@@ -101,7 +102,7 @@ static int run(struct args args)
         int err = key_generate(&key);
         if (err < 0)
             return err;
-        err = key_to_file(key, key_name);
+        err = key_to_file(key, args.key_name);
         if (err < 0)
             return err;
         return EXIT_SUCCESS;
@@ -113,7 +114,7 @@ static int run(struct args args)
     }
 
     if (!args.key) {
-        log_error("No key passed, please try and pass a key like example --key, -k des.key");
+        log_error("No key passed, please try and pass for example a key like --key=des,key, -kdes.key");
         return EXIT_FAILURE;
     }
 
@@ -152,11 +153,11 @@ static int run(struct args args)
 }
 
 static const char *help_menu =
-"des encryption cipher                              \n"
-"des -k des.key [-g] input                          \n"
-"--help, -h             print out the help message  \n"
-"--decrypt, -d          decrypt the input           \n"
-"--generate-key, -g     generate random 64bit key   \n"
+"des encryption cipher in ECB mode and using PKCS5.0 padding    \n"
+"des -k des.key [-g] input                                      \n"
+"--help, -h             print out the help message              \n"
+"--decrypt, -d          decrypt the input                       \n"
+"--generate-key, -g     generate random 64bit key               \n"
 "--key, -k              input key for enc and dec";
 
 
@@ -170,10 +171,11 @@ int main(int argc, char **argv)
 
     int ch = 0;
     struct args args = { 0 };
-    while ((ch = getopt_long(argc, argv, optstring, longopts, NULL)) != -1) {
+    while ((ch = getopt_long_only(argc, argv, optstring, longopts, NULL)) != -1) {
         switch (ch) {
             case 'g':
                 args.generate_key = true;
+                args.key_name = (optarg && strlen(optarg)>0) ? optarg : key_name;
                 break;
             case 'h':
                 puts(help_menu);
@@ -184,11 +186,14 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 }
                 break;
+            case ':':
+                log_error("Invalid option value %c\n", optopt);
+                break;
             case 'd':
                 args.decrypt = true;
                 break;
             case '?':
-                log_error("Invalid argument: %s\n", optarg);
+                log_error("Invalid argument: %c\n", optopt);
                 return EXIT_FAILURE;
         }
     }
@@ -214,11 +219,12 @@ cnt:
         return EXIT_FAILURE;
     }
 
-    if (!args.input.value) {
+    if (!args.input.value && !args.generate_key) {
         if (isatty(fileno(stdin))) {
             log_error("Passing input from terminal not supported, use args or pipe the input");
             return EXIT_FAILURE;
         }
+
         // we load from stdin bytes in machine form(le)
         int err = loadto(&args.input.value, &args.input.len, stdin);
         if (err) {

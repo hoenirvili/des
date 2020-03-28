@@ -219,6 +219,7 @@ cnt:
         return EXIT_FAILURE;
     }
 
+    int err = EXIT_SUCCESS;
     if (!args.input.value && !args.generate_key) {
         if (isatty(fileno(stdin))) {
             log_error("Passing input from terminal not supported, use args or pipe the input");
@@ -226,7 +227,7 @@ cnt:
         }
 
         // we load from stdin bytes in machine form(le)
-        int err = loadto(&args.input.value, &args.input.len, stdin);
+        err = loadto(&args.input.value, &args.input.len, stdin);
         if (err) {
             log_error("Cannot read input from pipe to stdin");
             return err;
@@ -239,7 +240,7 @@ cnt:
     }
 
 
-    int err = run(args);
+    err = run(args);
     free(args.input.value);
     return err;
 }

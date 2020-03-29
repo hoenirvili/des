@@ -1,6 +1,7 @@
 #include <string.h>
 
 #include "permutation.h"
+#include "endianess.h"
 #include "des.h"
 
 #define CIPHER_BLOCK_SIZE KEY_SIZE * 8
@@ -240,7 +241,7 @@ static uint64_t f(uint32_t block, key key)
 static void generate_subkeys(key inkey, key *keys)
 {
     const key skey = key_sub_pc1(inkey);
-    struct pair pairs[NKEYS+1] = {0};
+    struct pair pairs[NKEYS+1] = {{0}};
     load_key_into_pair(&PAIR_FIRST(pairs), skey);
     shift_rotate_left_pairs(PAIR_FIRST_C(pairs), PAIR_FIRST_D(pairs), &pairs[1]);
     load_keys_from_pairs(keys, &pairs[1]);

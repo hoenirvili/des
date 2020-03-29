@@ -6,6 +6,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "endianess.h"
 #include "key.h"
 #include "pad.h"
 #include "des.h"

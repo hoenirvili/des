@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "key.h"
+#include "endianess.h"
 #include "permutation.h"
 
 int key_from_file(key *key, const char *file)

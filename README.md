@@ -4,6 +4,10 @@ This is a small command line utility for generating and encrypting messages usin
 This is just a simplified implementation of DES(ECB mode) that I've done in order to satisfy my curiosity on how to implement a crypto cipher top to bottom. The padding strategy we use is PKCS5. We don't use like in openssl a password salt combination and also we don't verify if the imput key
 or that one we generate is weak or not.
 
+[![asciicast](https://asciinema.org/a/HTJde9ZwiQfVFQaLVb6FTz0oP.svg)](https://asciinema.org/a/HTJde9ZwiQfVFQaLVb6FTz0oP)
+
+
+
 I used as a reference implementing DES the following [document](http://page.math.tu-berlin.de/~kant/teaching/hess/krypto-ws2006/des.htm).
 
 ```bash

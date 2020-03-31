@@ -19,7 +19,7 @@ static const struct option longopts[] = {
     {"key", required_argument, NULL, 'k'},
     {"help", no_argument, NULL, 'h'},
     {"decrypt",no_argument, NULL, 'd'},
-    {},
+    {0},
 };
 
 struct input {

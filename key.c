@@ -36,7 +36,7 @@ int key_generate(key *key)
 
 int key_to_file(key key, const char *file)
 {
-    FILE *fp = fopen(file, "w");
+    FILE *fp = fopen(file, "wb");
     if (!fp)
         return EXIT_FAILURE;
 

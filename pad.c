@@ -20,7 +20,7 @@ struct pad_input pad(const char* input, size_t n)
     char *bytes = (char*)padded;
     memset(&bytes[n], c, c);
 
-    return (struct pad_input){ .blocks = padded, n = blocks};
+    return (struct pad_input){ .blocks = padded, n = blocks };
 }
 
 size_t pad_remove(struct pad_input pi)

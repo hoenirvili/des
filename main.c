@@ -49,9 +49,9 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
         return EXIT_FAILURE;
     }
     size_t offset = 0;
-    ssize_t size = BUFSIZ;
+    ssize_t capacity = BUFSIZ;
     for (;;) {
-        if (size == 0) {
+        if (capacity == 0) {
             // grow the buffer
             char *nbuff = realloc(buff, offset + BUFSIZ);
             if (!nbuff) {
@@ -60,9 +60,9 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
                 return EXIT_FAILURE;
             }
             buff = nbuff;
-            size = BUFSIZ;
+            capacity = BUFSIZ;
         }
-        ssize_t n = fread(&buff[offset], sizeof(*buff), size, fp);
+        ssize_t n = fread(&buff[offset], sizeof(*buff), capacity, fp);
         if (n == BUFSIZ) {
             offset += n;
             // grow the buffer
@@ -73,11 +73,11 @@ static int loadto(char **buffer, size_t *n, FILE* fp)
                 return EXIT_FAILURE;
             }
             buff = nbuff;
-            size = BUFSIZ;
+            capacity = BUFSIZ;
         }
         if ((n > 0) && (n != BUFSIZ)) {
             offset += n;
-            size -= n;
+            capacity -= n;
         }
         if (n < 0) {
             if ((ferror(fp) != 0)) {
@@ -216,7 +216,7 @@ int main(int argc, char **argv)
 
 cnt:
     if (optind < argc) {
-        log_error("It requires just one input message, aka \"input\", \"one multi word input\"");
+        log_error("It requires just one input message, like this \"input\", or \"one multi word input\"");
         return EXIT_FAILURE;
     }
 

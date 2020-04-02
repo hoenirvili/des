@@ -48,7 +48,7 @@ int key_to_file(key key, const char *file)
     return code;
 }
 
-const uint8_t pc1[56] = {
+static const uint8_t pc1[56] = {
     57, 49, 41, 33, 25, 17, 9,
     1 , 58, 50, 42, 34, 26, 18,
     10, 2,  59, 51, 43, 35, 27,
@@ -59,7 +59,7 @@ const uint8_t pc1[56] = {
     21, 13, 5,  28, 20, 12, 4
 };
 
-const uint8_t pc2[48] = {
+static const uint8_t pc2[48] = {
      14, 17, 11, 24, 1,  5,
      3,  28, 15, 6,  21, 10,
      23, 19, 12, 4,  26, 8,
